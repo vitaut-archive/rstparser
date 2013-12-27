@@ -31,16 +31,22 @@
 
 rst::ContentHandler::~ContentHandler() {}
 
-void rst::Parser::ParseParagraph() {
-  handler_->StartParagraph();
+void rst::Parser::ParseBlock(rst::BlockType type) {
+  handler_->StartBlock(type);
   std::string text;
   for (;;) {
     const char *line_start = ptr_;
     while (*ptr_ && *ptr_ != '\n')
       ++ptr_;
-    if (*ptr_ == '\n')
+    const char *end = ptr_;
+    // Strip whitespace at the end of the line.
+    while (end != line_start && std::isspace(end[-1]))
+      --end;
+    text.append(line_start, end);
+    if (*ptr_ == '\n') {
       ++ptr_;
-    text.append(line_start, ptr_);
+      text.push_back('\n');
+    }
     // Skip whitespace.
     while (std::isspace(*ptr_))
       ++ptr_;
@@ -52,34 +58,32 @@ void rst::Parser::ParseParagraph() {
       break;  // End of input.
   }
   handler_->HandleText(text.c_str(), text.size());
-  handler_->EndParagraph();
-}
-
-void rst::Parser::ParseBlockNode() {
-  // Skip empty lines.
-  while (*ptr_) {
-    // Skip whitespace.
-    while (std::isspace(*ptr_))
-      ++ptr_;
-    if (*ptr_ != '\n')
-      break;
-    ++ptr_;
-  }
-  switch (*ptr_) {
-  case '.':
-    if (ptr_[1] == '.' && ptr_[2] == ' ') {
-      // TODO: parse directive name, then "::"
-    }
-    break;
-  case '*':
-    // TODO: parse list
-    break;
-  }
-  ParseParagraph();
+  handler_->EndBlock();
 }
 
 void rst::Parser::Parse(const char *s) {
   ptr_ = s;
-  while (*ptr_)
-    ParseBlockNode();
+  while (*ptr_) {
+    bool indented = std::isspace(*ptr_);
+    // Skip empty lines.
+    while (*ptr_) {
+      // Skip whitespace.
+      while (std::isspace(*ptr_))
+        ++ptr_;
+      if (*ptr_ != '\n')
+        break;
+      ++ptr_;
+    }
+    switch (*ptr_) {
+    case '.':
+      if (ptr_[1] == '.' && ptr_[2] == ' ') {
+        // TODO: parse directive name, then "::"
+      }
+      break;
+    case '*':
+      // TODO: parse list
+      break;
+    }
+    ParseBlock(indented ? BLOCKQUOTE : PARAGRAPH);
+  }
 }

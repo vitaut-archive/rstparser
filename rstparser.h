@@ -34,14 +34,23 @@
 
 namespace rst {
 
+enum BlockType {
+  PARAGRAPH,
+  BLOCKQUOTE
+};
+
 // Receive notification of the logical content of a document.
 class ContentHandler {
  public:
   virtual ~ContentHandler();
 
-  virtual void StartParagraph() = 0;
-  virtual void EndParagraph() = 0;
+  // Receives notification of the beginning of a text block.
+  virtual void StartBlock(BlockType type) = 0;
 
+  // Receives notification of the end of a text block.
+  virtual void EndBlock() = 0;
+
+  // Receives notification of text.
   virtual void HandleText(const char *text, std::size_t size) = 0;
 };
 
@@ -54,11 +63,11 @@ class Parser {
   // Parses a paragraph.
   void ParseParagraph();
 
-  // Parses a block node.
-  void ParseBlockNode();
+  // Parses a block of text.
+  void ParseBlock(rst::BlockType type);
 
  public:
-  explicit Parser(ContentHandler *h) : handler_(h) {}
+  explicit Parser(ContentHandler *h) : handler_(h), ptr_(0) {}
 
   // Parses a string containing reStructuredText and returns a document node.
   void Parse(const char *s);

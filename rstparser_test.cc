@@ -33,24 +33,63 @@
 
 #include "rstparser.h"
 
-TEST(ParserTest, Parse) {
-  struct TestHandler : rst::ContentHandler {
-    std::string content;
+namespace {
 
-    void StartParagraph() {
-      content += "<p>";
+class TestHandler : public rst::ContentHandler {
+ private:
+  std::string tag_;
+  std::string content_;
+
+ public:
+  const std::string &content() const { return content_; }
+
+  void StartBlock(rst::BlockType type) {
+    switch (type) {
+    case rst::PARAGRAPH:
+      tag_ = "p";
+      break;
+    case rst::BLOCKQUOTE:
+      tag_ = "blockquote";
+      break;
     }
-    void EndParagraph() {
-      content += "</p>";
-    }
-    void HandleText(const char *text, std::size_t size) {
-      content.append(text, size);
-    }
-  };
+    content_ += "<" + tag_ + ">";
+  }
+
+  void EndBlock() {
+    content_ += "</" + tag_ + ">";
+  }
+
+  void HandleText(const char *text, std::size_t size) {
+    content_.append(text, size);
+  }
+};
+
+std::string Parse(const char *s) {
   TestHandler handler;
   rst::Parser parser(&handler);
-  parser.Parse("hello");
-  EXPECT_EQ("<p>hello</p>", handler.content);
+  parser.Parse(s);
+  return handler.content();
+}
+}
+
+TEST(ParserTest, Paragraph) {
+  EXPECT_EQ("<p>test</p>", Parse("test"));
+}
+
+TEST(ParserTest, BlockQuote) {
+  EXPECT_EQ("<blockquote>test</blockquote>", Parse(" test"));
+}
+
+TEST(ParserTest, PreserveInnerSpace) {
+  EXPECT_EQ("<p>a  b</p>", Parse("a  b"));
+}
+
+TEST(ParserTest, StripTrailingSpace) {
+  EXPECT_EQ("<p>test</p>", Parse("test \t"));
+}
+
+TEST(ParserTest, MultiLineBlock) {
+  EXPECT_EQ("<p>line 1\nline 2</p>", Parse("line 1\nline 2"));
 }
 
 int main(int argc, char **argv) {
