@@ -117,15 +117,7 @@ class Parser {
 
  public:
   // Parses a string containing reStructuredText and returns a document node.
-  std::auto_ptr<CompoundNode> Parse(const char *s) {
-    std::auto_ptr<CompoundNode> document(new CompoundNode());
-    while (*s) {
-      std::auto_ptr<Node> node = ParseBlockNode(s);
-      if (node)
-        document->AddChild(node);
-    }
-    return document;
-  }
+  std::auto_ptr<CompoundNode> Parse(const char *s);
 };
 }
 
