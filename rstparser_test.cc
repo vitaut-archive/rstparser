@@ -74,6 +74,7 @@ std::string Parse(const char *s) {
 
 TEST(ParserTest, Paragraph) {
   EXPECT_EQ("<p>test</p>", Parse("test"));
+  EXPECT_EQ("<p>test</p>", Parse("\ntest"));
 }
 
 TEST(ParserTest, BlockQuote) {
@@ -84,12 +85,22 @@ TEST(ParserTest, PreserveInnerSpace) {
   EXPECT_EQ("<p>a  b</p>", Parse("a  b"));
 }
 
+TEST(ParserTest, ReplaceWhitespace) {
+  EXPECT_EQ("<p>a       b</p>", Parse("a\tb"));
+  EXPECT_EQ("<blockquote>a      b</blockquote>", Parse(" a\tb"));
+  EXPECT_EQ("<p>a b</p>", Parse("a\vb"));
+}
+
 TEST(ParserTest, StripTrailingSpace) {
   EXPECT_EQ("<p>test</p>", Parse("test \t"));
 }
 
 TEST(ParserTest, MultiLineBlock) {
   EXPECT_EQ("<p>line 1\nline 2</p>", Parse("line 1\nline 2"));
+}
+
+TEST(ParserTest, UnindentBlock) {
+  EXPECT_EQ("<blockquote>abc</blockquote><p>def</p>", Parse(" abc\ndef"));
 }
 
 int main(int argc, char **argv) {

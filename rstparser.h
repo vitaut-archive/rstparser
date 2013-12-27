@@ -60,11 +60,14 @@ class Parser {
   ContentHandler *handler_;
   const char *ptr_;
 
+  // Skips whitespace.
+  void SkipSpace();
+
   // Parses a paragraph.
   void ParseParagraph();
 
   // Parses a block of text.
-  void ParseBlock(rst::BlockType type);
+  void ParseBlock(rst::BlockType type, int indent);
 
  public:
   explicit Parser(ContentHandler *h) : handler_(h), ptr_(0) {}

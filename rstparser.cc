@@ -31,25 +31,51 @@
 
 rst::ContentHandler::~ContentHandler() {}
 
-void rst::Parser::ParseBlock(rst::BlockType type) {
+void rst::Parser::SkipSpace() {
+  while (std::isspace(*ptr_) && *ptr_ != '\n')
+    ++ptr_;
+}
+
+void rst::Parser::ParseBlock(rst::BlockType type, int indent) {
   handler_->StartBlock(type);
   std::string text;
-  for (;;) {
+  for (bool first = true; ;first = false) {
     const char *line_start = ptr_;
+    if (!first) {
+      // Check indentation.
+      SkipSpace();
+      if (ptr_ - line_start != indent)
+        break;
+    }
+
+    // Find the end of the line.
     while (*ptr_ && *ptr_ != '\n')
       ++ptr_;
-    const char *end = ptr_;
+
     // Strip whitespace at the end of the line.
+    const char *end = ptr_;
     while (end != line_start && std::isspace(end[-1]))
       --end;
-    text.append(line_start, end);
-    if (*ptr_ == '\n') {
-      ++ptr_;
+
+    // Copy text converting all whitespace characters to spaces.
+    text.reserve(end - line_start + 1);
+    if (!first)
       text.push_back('\n');
+    enum {TAB_WIDTH = 8};
+    for (const char *s = line_start; s != end; ++s) {
+      char c = *s;
+      if (c == '\t') {
+        text.append("        ",
+            TAB_WIDTH - ((indent + s - line_start) % TAB_WIDTH));
+      } else if (std::isspace(c)) {
+        text.push_back(' ');
+      } else {
+        text.push_back(*s);
+      }
     }
-    // Skip whitespace.
-    while (std::isspace(*ptr_))
+    if (*ptr_ == '\n')
       ++ptr_;
+    SkipSpace();
     if (*ptr_ == '\n') {
       ++ptr_;
       break;  // Empty line ends the paragraph.
@@ -57,6 +83,8 @@ void rst::Parser::ParseBlock(rst::BlockType type) {
     if (!*ptr_)
       break;  // End of input.
   }
+  if (*text.rbegin() == '\n')
+    text.resize(text.size() - 1);
   handler_->HandleText(text.c_str(), text.size());
   handler_->EndBlock();
 }
@@ -64,15 +92,12 @@ void rst::Parser::ParseBlock(rst::BlockType type) {
 void rst::Parser::Parse(const char *s) {
   ptr_ = s;
   while (*ptr_) {
-    bool indented = std::isspace(*ptr_);
-    // Skip empty lines.
-    while (*ptr_) {
-      // Skip whitespace.
-      while (std::isspace(*ptr_))
-        ++ptr_;
-      if (*ptr_ != '\n')
-        break;
+    // Skip whitespace and empty lines.
+    const char *line_start = ptr_;
+    SkipSpace();
+    if (*ptr_ == '\n') {
       ++ptr_;
+      continue;
     }
     switch (*ptr_) {
     case '.':
@@ -84,6 +109,7 @@ void rst::Parser::Parse(const char *s) {
       // TODO: parse list
       break;
     }
-    ParseBlock(indented ? BLOCKQUOTE : PARAGRAPH);
+    ParseBlock(std::isspace(line_start[0]) ? BLOCKQUOTE : PARAGRAPH,
+        ptr_ - line_start);
   }
 }
