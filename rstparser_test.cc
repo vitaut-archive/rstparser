@@ -62,6 +62,10 @@ class TestHandler : public rst::ContentHandler {
   void HandleText(const char *text, std::size_t size) {
     content_.append(text, size);
   }
+
+  void HandleDirective(const char *type) {
+    content_ += std::string("<") + type + " />";
+  }
 };
 
 std::string Parse(const char *s) {
@@ -75,6 +79,7 @@ std::string Parse(const char *s) {
 TEST(ParserTest, Paragraph) {
   EXPECT_EQ("<p>test</p>", Parse("test"));
   EXPECT_EQ("<p>test</p>", Parse("\ntest"));
+  EXPECT_EQ("<p>..test</p>", Parse("..test"));
 }
 
 TEST(ParserTest, BlockQuote) {
@@ -101,6 +106,18 @@ TEST(ParserTest, MultiLineBlock) {
 
 TEST(ParserTest, UnindentBlock) {
   EXPECT_EQ("<blockquote>abc</blockquote><p>def</p>", Parse(" abc\ndef"));
+}
+
+TEST(ParserTest, Comment) {
+  EXPECT_EQ("", Parse(".."));
+  EXPECT_EQ("", Parse(".. comment"));
+  EXPECT_EQ("", Parse(".. comment:"));
+}
+
+TEST(ParserTest, Directive) {
+  EXPECT_EQ("<test />", Parse(".. test::"));
+  EXPECT_EQ("<test />", Parse("..  test::"));
+  EXPECT_EQ("<test />", Parse("..\ttest::"));
 }
 
 int main(int argc, char **argv) {

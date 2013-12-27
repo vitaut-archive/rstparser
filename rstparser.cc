@@ -27,6 +27,7 @@
 
 #include "rstparser.h"
 
+#include <cctype>
 #include <cstring>
 
 rst::ContentHandler::~ContentHandler() {}
@@ -34,6 +35,31 @@ rst::ContentHandler::~ContentHandler() {}
 void rst::Parser::SkipSpace() {
   while (std::isspace(*ptr_) && *ptr_ != '\n')
     ++ptr_;
+}
+
+std::string rst::Parser::ParseDirectiveType() {
+  const char *s = ptr_;
+  if (!std::isalnum(*s))
+    return std::string();
+  for (;;) {
+    ++s;
+    if (std::isalnum(*s))
+      continue;
+    switch (*s) {
+    case '-': case '_': case '+': case ':': case '.':
+      if (std::isalnum(s[1])) {
+        ++s;
+        continue;
+      }
+      // Fall through.
+    }
+    break;
+  }
+  std::string type;
+  if (s != ptr_)
+    type.assign(ptr_, s);
+  ptr_ = s;
+  return type;
 }
 
 void rst::Parser::ParseBlock(rst::BlockType type, int indent) {
@@ -46,6 +72,12 @@ void rst::Parser::ParseBlock(rst::BlockType type, int indent) {
       SkipSpace();
       if (ptr_ - line_start != indent)
         break;
+      if (*ptr_ == '\n') {
+        ++ptr_;
+        break;  // Empty line ends the block.
+      }
+      if (!*ptr_)
+        break;  // End of input.
     }
 
     // Find the end of the line.
@@ -75,13 +107,6 @@ void rst::Parser::ParseBlock(rst::BlockType type, int indent) {
     }
     if (*ptr_ == '\n')
       ++ptr_;
-    SkipSpace();
-    if (*ptr_ == '\n') {
-      ++ptr_;
-      break;  // Empty line ends the paragraph.
-    }
-    if (!*ptr_)
-      break;  // End of input.
   }
   if (*text.rbegin() == '\n')
     text.resize(text.size() - 1);
@@ -101,10 +126,23 @@ void rst::Parser::Parse(const char *s) {
     }
     switch (*ptr_) {
     case '.':
-      if (ptr_[1] == '.' && ptr_[2] == ' ') {
-        // TODO: parse directive name, then "::"
+      if (ptr_[1] == '.') {
+        if (!std::isspace(ptr_[2]) && ptr_[2])
+          break;
+        ptr_ += 2;
+        SkipSpace();
+        std::string type = ParseDirectiveType();
+        if (!type.empty() && ptr_[0] == ':' && ptr_[1] == ':') {
+          ptr_ += 2;
+          handler_->HandleDirective(type.c_str());
+        }
+        // Skip everything till the end of the line.
+        while (*ptr_ && *ptr_ != '\n')
+          ++ptr_;
+        if (*ptr_ == '\n')
+          ++ptr_;
       }
-      break;
+      continue;
     case '*':
       // TODO: parse list
       break;

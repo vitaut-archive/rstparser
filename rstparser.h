@@ -52,6 +52,9 @@ class ContentHandler {
 
   // Receives notification of text.
   virtual void HandleText(const char *text, std::size_t size) = 0;
+
+  // Receives notification of a directive.
+  virtual void HandleDirective(const char *type) = 0;
 };
 
 // A parser for a subset of reStructuredText.
@@ -62,6 +65,9 @@ class Parser {
 
   // Skips whitespace.
   void SkipSpace();
+
+  // Parses a directive type.
+  std::string ParseDirectiveType();
 
   // Parses a paragraph.
   void ParseParagraph();
