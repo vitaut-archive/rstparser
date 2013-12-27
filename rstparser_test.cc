@@ -31,6 +31,28 @@
 # include <crtdbg.h>
 #endif
 
+#include "rstparser.h"
+
+TEST(ParserTest, Parse) {
+  struct TestHandler : rst::ContentHandler {
+    std::string content;
+
+    void StartParagraph() {
+      content += "<p>";
+    }
+    void EndParagraph() {
+      content += "</p>";
+    }
+    void HandleText(const char *text, std::size_t size) {
+      content.append(text, size);
+    }
+  };
+  TestHandler handler;
+  rst::Parser parser(&handler);
+  parser.Parse("hello");
+  EXPECT_EQ("<p>hello</p>", handler.content);
+}
+
 int main(int argc, char **argv) {
 #ifdef _WIN32
   // Disable message boxes on assertion failures.

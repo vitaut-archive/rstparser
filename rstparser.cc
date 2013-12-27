@@ -27,12 +27,59 @@
 
 #include "rstparser.h"
 
-std::auto_ptr<CompoundNode> rst::Parser::Parse(const char *s) {
-  std::auto_ptr<CompoundNode> document(new CompoundNode());
-  while (*s) {
-    std::auto_ptr<Node> node = ParseBlockNode(s);
-    if (node)
-      document->AddChild(node);
+#include <cstring>
+
+rst::ContentHandler::~ContentHandler() {}
+
+void rst::Parser::ParseParagraph() {
+  handler_->StartParagraph();
+  std::string text;
+  for (;;) {
+    const char *line_start = ptr_;
+    while (*ptr_ && *ptr_ != '\n')
+      ++ptr_;
+    if (*ptr_ == '\n')
+      ++ptr_;
+    text.append(line_start, ptr_);
+    // Skip whitespace.
+    while (std::isspace(*ptr_))
+      ++ptr_;
+    if (*ptr_ == '\n') {
+      ++ptr_;
+      break;  // Empty line ends the paragraph.
+    }
+    if (!*ptr_)
+      break;  // End of input.
   }
-  return document;
+  handler_->HandleText(text.c_str(), text.size());
+  handler_->EndParagraph();
+}
+
+void rst::Parser::ParseBlockNode() {
+  // Skip empty lines.
+  while (*ptr_) {
+    // Skip whitespace.
+    while (std::isspace(*ptr_))
+      ++ptr_;
+    if (*ptr_ != '\n')
+      break;
+    ++ptr_;
+  }
+  switch (*ptr_) {
+  case '.':
+    if (ptr_[1] == '.' && ptr_[2] == ' ') {
+      // TODO: parse directive name, then "::"
+    }
+    break;
+  case '*':
+    // TODO: parse list
+    break;
+  }
+  ParseParagraph();
+}
+
+void rst::Parser::Parse(const char *s) {
+  ptr_ = s;
+  while (*ptr_)
+    ParseBlockNode();
 }

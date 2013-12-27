@@ -29,95 +29,39 @@
 #define RSTPARSER_H_
 
 #include <memory>
+#include <string>
 #include <vector>
 
 namespace rst {
 
-// A document tree node.
-class Node {
- private:
-  // Do not implement!
-  Node(const Node &);
-  void operator=(const Node &);
-
+// Receive notification of the logical content of a document.
+class ContentHandler {
  public:
-  Node() {}
-};
+  virtual ~ContentHandler();
 
-// A paragraph.
-class Paragraph : public Node {
- private:
-  std::string text_;
-};
+  virtual void StartParagraph() = 0;
+  virtual void EndParagraph() = 0;
 
-// A compound node, i.e. the one that may contain other nodes.
-class CompoundNode : public Node {
-private:
-  std::vector<Node*> children_;
-  
-public:
-  virtual ~CompoundNode() {
-    for (std::vector<Node*>::iterator
-        i = children_.begin(), e = children_.end(); i != e; ++i) {
-      delete *i;
-    }
-  }
-
-  void AddChild(std::auto_ptr<Node> child) {
-    children_.push_back(child.get());
-    child.release();
-  }
+  virtual void HandleText(const char *text, std::size_t size) = 0;
 };
 
 // A parser for a subset of reStructuredText.
 class Parser {
  private:
+  ContentHandler *handler_;
+  const char *ptr_;
+
   // Parses a paragraph.
-  std::auto_ptr<Node> ParseParagraph(const char *s) {
-    std::string text;
-    for (;;) {
-      const char *line_start = s;
-      while (*s && *s != '\n')
-        ++s;
-      if (s == '\n')
-        ++s;
-      text.append(line_start, s);
-      // Skip whitespace.
-      while (std::isspace(*s))
-        ++s;
-      if (*s == '\n') {
-        ++s;
-        break;  // Empty line ends the paragraph.
-      }
-      if (!*s)
-        break;  // End of input.
-    }
-    return std::auto_ptr<Node>(new Paragraph(text));
-  }
+  void ParseParagraph();
 
   // Parses a block node.
-  std::auto_ptr<Node> ParseBlockNode(const char *s) {
-    // Skip empty lines.
-    while (*s) {
-      // Skip whitespace.
-      while (std::isspace(*s))
-        ++s;
-      if (*s != '\n')
-        break;
-      ++s;
-    }
-    char DIRECTIVE_START[] = ".. ";
-    const size_t DIRECTIVE_START_LEN = sizeof(DIRECTIVE_START) - 1;
-    if (std::strncmp(s, DIRECTIVE_START, DIRECTIVE_START_LEN) == 0) {
-      s += DIRECTIVE_START_LEN;
-      // TODO: parse directive name, then "::"
-    }
-    return ParseParagraph(s);
-  }
+  void ParseBlockNode();
 
  public:
+  explicit Parser(ContentHandler *h) : handler_(h) {}
+
   // Parses a string containing reStructuredText and returns a document node.
-  std::auto_ptr<CompoundNode> Parse(const char *s);
+  void Parse(const char *s);
 };
 }
 
