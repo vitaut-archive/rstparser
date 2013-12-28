@@ -30,10 +30,20 @@
 #include <cctype>
 #include <cstring>
 
+namespace {
+inline bool IsSpace(char c) {
+  switch (c) {
+  case ' ': case '\t': case '\v': case '\f':
+    return true;
+  }
+  return false;
+}
+}
+
 rst::ContentHandler::~ContentHandler() {}
 
 void rst::Parser::SkipSpace() {
-  while (std::isspace(*ptr_) && *ptr_ != '\n')
+  while (IsSpace(*ptr_))
     ++ptr_;
 }
 
@@ -62,7 +72,19 @@ std::string rst::Parser::ParseDirectiveType() {
   return type;
 }
 
-void rst::Parser::ParseBlock(rst::BlockType type, int indent) {
+void rst::Parser::EnterBlock(rst::BlockType &prev_type, rst::BlockType type) {
+  if (type == prev_type)
+    return;
+  if (prev_type == LIST_ITEM)
+    handler_->EndBlock();
+  if (type == LIST_ITEM)
+    handler_->StartBlock(BULLET_LIST);
+  prev_type = type;
+}
+
+void rst::Parser::ParseBlock(
+    rst::BlockType type, rst::BlockType &prev_type, int indent) {
+  EnterBlock(prev_type, type);
   handler_->StartBlock(type);
   std::string text;
   for (bool first = true; ;first = false) {
@@ -86,7 +108,7 @@ void rst::Parser::ParseBlock(rst::BlockType type, int indent) {
 
     // Strip whitespace at the end of the line.
     const char *end = ptr_;
-    while (end != line_start && std::isspace(end[-1]))
+    while (end != line_start && IsSpace(end[-1]))
       --end;
 
     // Copy text converting all whitespace characters to spaces.
@@ -99,7 +121,7 @@ void rst::Parser::ParseBlock(rst::BlockType type, int indent) {
       if (c == '\t') {
         text.append("        ",
             TAB_WIDTH - ((indent + s - line_start) % TAB_WIDTH));
-      } else if (std::isspace(c)) {
+      } else if (IsSpace(c)) {
         text.push_back(' ');
       } else {
         text.push_back(*s);
@@ -115,6 +137,7 @@ void rst::Parser::ParseBlock(rst::BlockType type, int indent) {
 }
 
 void rst::Parser::Parse(const char *s) {
+  BlockType prev_type = PARAGRAPH;
   ptr_ = s;
   while (*ptr_) {
     // Skip whitespace and empty lines.
@@ -127,8 +150,10 @@ void rst::Parser::Parse(const char *s) {
     switch (*ptr_) {
     case '.':
       if (ptr_[1] == '.') {
-        if (!std::isspace(ptr_[2]) && ptr_[2])
+        char c = ptr_[2];
+        if (!IsSpace(c) && c != '\n' && c)
           break;
+        // Parse a directive or a comment.
         ptr_ += 2;
         SkipSpace();
         std::string type = ParseDirectiveType();
@@ -141,13 +166,19 @@ void rst::Parser::Parse(const char *s) {
           ++ptr_;
         if (*ptr_ == '\n')
           ++ptr_;
+        continue;
       }
-      continue;
-    case '*':
-      // TODO: parse list
+      break;
+    case '*': case '+': case '-':
+      if (IsSpace(ptr_[1])) {
+        ptr_ += 2;
+        ParseBlock(LIST_ITEM, prev_type, ptr_ - line_start);
+        continue;
+      }
       break;
     }
-    ParseBlock(std::isspace(line_start[0]) ? BLOCKQUOTE : PARAGRAPH,
-        ptr_ - line_start);
+    ParseBlock(std::isspace(line_start[0]) ? BLOCK_QUOTE : PARAGRAPH,
+        prev_type, ptr_ - line_start);
   }
+  EnterBlock(prev_type, PARAGRAPH);
 }

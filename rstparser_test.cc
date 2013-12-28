@@ -27,6 +27,8 @@
 
 #include <gtest/gtest.h>
 
+#include <stack>
+
 #ifdef _WIN32
 # include <crtdbg.h>
 #endif
@@ -37,26 +39,35 @@ namespace {
 
 class TestHandler : public rst::ContentHandler {
  private:
-  std::string tag_;
+  std::stack<std::string> tags_;
   std::string content_;
 
  public:
   const std::string &content() const { return content_; }
 
   void StartBlock(rst::BlockType type) {
+    std::string tag;
     switch (type) {
     case rst::PARAGRAPH:
-      tag_ = "p";
+      tag = "p";
       break;
-    case rst::BLOCKQUOTE:
-      tag_ = "blockquote";
+    case rst::BLOCK_QUOTE:
+      tag = "blockquote";
+      break;
+    case rst::BULLET_LIST:
+      tag = "ul";
+      break;
+    case rst::LIST_ITEM:
+      tag = "li";
       break;
     }
-    content_ += "<" + tag_ + ">";
+    content_ += "<" + tag + ">";
+    tags_.push(tag);
   }
 
   void EndBlock() {
-    content_ += "</" + tag_ + ">";
+    content_ += "</" + tags_.top() + ">";
+    tags_.pop();
   }
 
   void HandleText(const char *text, std::size_t size) {
@@ -79,6 +90,7 @@ std::string Parse(const char *s) {
 TEST(ParserTest, Paragraph) {
   EXPECT_EQ("<p>test</p>", Parse("test"));
   EXPECT_EQ("<p>test</p>", Parse("\ntest"));
+  EXPECT_EQ("<p>.</p>", Parse("."));
   EXPECT_EQ("<p>..test</p>", Parse("..test"));
 }
 
@@ -108,8 +120,13 @@ TEST(ParserTest, UnindentBlock) {
   EXPECT_EQ("<blockquote>abc</blockquote><p>def</p>", Parse(" abc\ndef"));
 }
 
+TEST(ParserTest, BulletList) {
+  EXPECT_EQ("<ul><li>item</li></ul>", Parse("* item"));
+}
+
 TEST(ParserTest, Comment) {
   EXPECT_EQ("", Parse(".."));
+  EXPECT_EQ("", Parse("..\n"));
   EXPECT_EQ("", Parse(".. comment"));
   EXPECT_EQ("", Parse(".. comment:"));
 }
