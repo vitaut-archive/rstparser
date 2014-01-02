@@ -11,6 +11,11 @@ endif ()
 project(RSTPARSER)
 
 add_library(rstparser rstparser.cc rstparser.h)
+if (NOT MSVC)
+  set(EXTRA_FLAGS "-Wall -Wextra -pedantic")
+endif ()
+
+set_target_properties(rstparser PROPERTIES COMPILE_FLAGS ${EXTRA_FLAGS})
 
 # We compile Google Test ourselves instead of using pre-compiled libraries.
 # See the Google Test FAQ "Why is it not recommended to install a
@@ -28,11 +33,8 @@ if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/gtest/CMakeLists.txt)
   include_directories(gtest/include)
   link_directories(${CMAKE_CURRENT_BINARY_DIR}/gtest)
   enable_testing()
-  add_executable(rstparser_test rstparser_test.cc)
-  target_link_libraries(rstparser_test rstparser gtest)
-  if (CMAKE_COMPILER_IS_GNUCXX)
-    set_target_properties(rstparser_test
-      PROPERTIES COMPILE_FLAGS "-Wall -Wextra -pedantic")
-  endif ()
-  add_test(rstparser_test rstparser_test)
+  add_executable(rstparser-test rstparser-test.cc)
+  target_link_libraries(rstparser-test rstparser gtest)
+  set_target_properties(rstparser-test PROPERTIES COMPILE_FLAGS ${EXTRA_FLAGS})
+  add_test(rstparser-test rstparser-test)
 endif ()
