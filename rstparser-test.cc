@@ -51,6 +51,9 @@ class TestHandler : public rst::ContentHandler {
     case rst::PARAGRAPH:
       tag = "p";
       break;
+    case rst::LINE_BLOCK:
+      tag = "lineblock";
+      break;
     case rst::BLOCK_QUOTE:
       tag = "blockquote";
       break;
@@ -60,7 +63,7 @@ class TestHandler : public rst::ContentHandler {
     case rst::LIST_ITEM:
       tag = "li";
       break;
-    case rst::LITERAL:
+    case rst::LITERAL_BLOCK:
       tag = "code";
       break;
     }
@@ -95,6 +98,11 @@ TEST(ParserTest, Paragraph) {
   EXPECT_EQ("<p>test</p>", Parse("\ntest"));
   EXPECT_EQ("<p>.</p>", Parse("."));
   EXPECT_EQ("<p>..test</p>", Parse("..test"));
+}
+
+TEST(ParserTest, LineBlock) {
+  EXPECT_EQ("<lineblock>test</lineblock>", Parse("| test"));
+  EXPECT_EQ("<lineblock>  abc\ndef</lineblock>", Parse("|   abc\n| def"));
 }
 
 TEST(ParserTest, BlockQuote) {

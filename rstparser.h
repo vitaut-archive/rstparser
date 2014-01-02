@@ -36,10 +36,11 @@ namespace rst {
 
 enum BlockType {
   PARAGRAPH,
+  LINE_BLOCK,
   BLOCK_QUOTE,
   BULLET_LIST,
   LIST_ITEM,
-  LITERAL
+  LITERAL_BLOCK
 };
 
 // Receive notification of the logical content of a document.
@@ -80,6 +81,9 @@ class Parser {
 
   // Parses a block of text.
   void ParseBlock(rst::BlockType type, rst::BlockType &prev_type, int indent);
+
+  // Parses a line block.
+  void ParseLineBlock(rst::BlockType &prev_type, int indent);
 
  public:
   explicit Parser(ContentHandler *h) : handler_(h), ptr_(0) {}
