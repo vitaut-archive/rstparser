@@ -60,6 +60,9 @@ class TestHandler : public rst::ContentHandler {
     case rst::LIST_ITEM:
       tag = "li";
       break;
+    case rst::LITERAL:
+      tag = "code";
+      break;
     }
     content_ += "<" + tag + ">";
     tags_.push(tag);
@@ -123,6 +126,12 @@ TEST(ParserTest, UnindentBlock) {
 TEST(ParserTest, BulletList) {
   EXPECT_EQ("<ul><li>item</li></ul>", Parse("* item"));
   EXPECT_EQ("<ul><li>abc\ndef</li></ul>", Parse("* abc\n  def"));
+}
+
+TEST(ParserTest, Literal) {
+  EXPECT_EQ("<code>abc\ndef</code>", Parse("::\n\n abc\n def"));
+  EXPECT_EQ("<p>abc\ndef</p>", Parse("::\n\nabc\ndef"));
+  EXPECT_EQ("<p>::\nabc\ndef</p>", Parse("::\nabc\ndef"));
 }
 
 TEST(ParserTest, Comment) {

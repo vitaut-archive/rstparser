@@ -38,7 +38,8 @@ enum BlockType {
   PARAGRAPH,
   BLOCK_QUOTE,
   BULLET_LIST,
-  LIST_ITEM
+  LIST_ITEM,
+  LITERAL
 };
 
 // Receive notification of the logical content of a document.

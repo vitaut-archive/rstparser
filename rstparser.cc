@@ -84,8 +84,6 @@ void rst::Parser::EnterBlock(rst::BlockType &prev_type, rst::BlockType type) {
 
 void rst::Parser::ParseBlock(
     rst::BlockType type, rst::BlockType &prev_type, int indent) {
-  EnterBlock(prev_type, type);
-  handler_->StartBlock(type);
   std::string text;
   for (bool first = true; ;first = false) {
     const char *line_start = ptr_;
@@ -132,8 +130,23 @@ void rst::Parser::ParseBlock(
     if (*ptr_ == '\n')
       ++ptr_;
   }
+
+  // Remove a trailing newline.
   if (*text.rbegin() == '\n')
     text.resize(text.size() - 1);
+
+  if (type == PARAGRAPH && text == "::") {
+    // Parse a literal block.
+    const char *line_start = ptr_;
+    SkipSpace();
+    int new_indent = ptr_ - line_start;
+    if (new_indent > indent)
+      ParseBlock(LITERAL, prev_type, new_indent);
+    return;
+  }
+
+  EnterBlock(prev_type, type);
+  handler_->StartBlock(type);
   handler_->HandleText(text.c_str(), text.size());
   handler_->EndBlock();
 }
