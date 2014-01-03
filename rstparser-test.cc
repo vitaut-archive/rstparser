@@ -137,6 +137,7 @@ TEST(ParserTest, BulletList) {
 }
 
 TEST(ParserTest, Literal) {
+  EXPECT_EQ("<p>abc:</p><code>def</code>", Parse("abc::\n\n def"));
   EXPECT_EQ("<code>abc\ndef</code>", Parse("::\n\n abc\n def"));
   EXPECT_EQ("<p>abc\ndef</p>", Parse("::\n\nabc\ndef"));
   EXPECT_EQ("<p>::\nabc\ndef</p>", Parse("::\nabc\ndef"));
